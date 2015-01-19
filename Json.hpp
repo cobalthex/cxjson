@@ -1,9 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <string>
-#include <map>
-#include <vector>
+#include "Pch.hpp"
 
 //return the size in bytes of the largest type in the group
 template<typename F, typename... Ts> struct SizeofLargestType { static const size_t size = (sizeof(F) > SizeofLargestType <Ts...>::size ? sizeof(F) : SizeofLargestType <Ts...>::size); };
@@ -92,8 +89,17 @@ namespace Json
 
 		static size_t DefaultStringReserveLength; //the default string reservation length (in chars) - Defaults to 32
 
-		friend std::istream& operator >> (std::istream& Stream, const Value& Value);
-		friend std::ostream& operator << (std::ostream& Stream, const Value& Value);
+		//Helper methods
+
+		//Load a value automatically from a file
+		static inline Value FromFile(const std::string& FileName)
+		{
+			std::ifstream fin (FileName, std::ios::in);
+			Value v;
+			v.Read(fin);
+			fin.close();
+			return v;
+		}
 
 	protected:
 		Types type;
@@ -106,7 +112,7 @@ namespace Json
 		static void SkipWhitespace(std::istream& Stream); //Skip any whitespace (Schema defined whitespace)
 		static std::string EscapeQuotes(std::string String);
 	};
-
-	std::istream& operator >> (std::istream& Stream, Value& Value);
-	std::ostream& operator << (std::ostream& Stream, const Value& Value);
 }
+
+inline std::istream& operator >> (std::istream& Stream, Json::Value& Value) { Value.Read(Stream); return Stream; }
+inline std::ostream& operator << (std::ostream& Stream, const Json::Value& Value) { Value.Write(Stream); return Stream; }

@@ -105,8 +105,8 @@ void Value::Read(std::istream& Stream)
 			s += ch;
 			Stream.get();
 		}
-
-		operator=(std::stoll(s));
+		//if (s.length() > 0)
+			operator=(std::stoll(s));
 		break;
 
 	case Types::Floating:
@@ -304,14 +304,13 @@ Types Value::GuessType(std::istream& Stream)
 	//figure out type of number (integer, floating)
 	if ((pk >= '0' && pk <= '9') || pk == '-')
 	{
-		ptrdiff_t count = 2;
+		ptrdiff_t count = 1;
 		char nk = Stream.get(); //skip first (already known from above)
-		while ((nk = Stream.get()) >= '0' && nk <= '9')
-			count++;
+		while ((nk = Stream.peek()) >= '0' && nk <= '9')
+			count++, nk = Stream.get();
 
 		Stream.seekg(-count, std::ios::cur); //reset
-	
-		char ch = Stream.peek();
+
 		if (nk == '.')
 			return Types::Floating;
 		return Types::Integer;
@@ -349,6 +348,3 @@ std::string Value::EscapeQuotes(std::string String)
 
 	return String;
 }
-
-std::istream& operator >> (std::istream& Stream, Value& Value) { Value.Read(Stream); return Stream; }
-std::ostream& operator << (std::ostream& Stream, const Value& Value) { Value.Write(Stream); return Stream; }
