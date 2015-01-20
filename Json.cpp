@@ -126,17 +126,56 @@ void Value::Read(std::istream& Stream)
 	case Types::String:
 	{
 		s.reserve(DefaultStringReserveLength); //most strings are short
+		char us[5]; //unicode string (first char is u)
+		char lastUni; //last unicode character (for surrogate pairs)
+		bool isLastUni = false;
 
 		char oq = Stream.get();
 		ch = Stream.get(); //(supports single quotes)
 		while (ch != oq)
 		{
-			s += ch;
-			if (ch == '\\')
-				s += Stream.get();
+			if (ch == '\\') //escape character
+			{
+				//parse unicode quads
+				if ((ch = Stream.peek()) == 'u' || ch == 'U')
+				{
+					Stream.read(us, 5); //read uXXXX
+					int u = std::stoi(us + 1, 0, 16);
+
+					//surrogate pairs
+					if (isLastUni)
+					{
+						s += (char)(u + lastUni);
+						isLastUni = false;
+					}
+					else
+					{
+						lastUni = u;
+						isLastUni = true;
+					}
+				}
+				else
+				{
+					s += Stream.get();
+					isLastUni = false;
+				}
+			}
+			else //regular char
+			{
+				if (isLastUni)
+				{
+					s += lastUni;
+					isLastUni = false;
+				}
+
+				s += ch;
+			}
 
 			ch = Stream.get();
 		}
+		//add last unicode
+		if (isLastUni)
+			s += lastUni;
 
 		operator=(s);
 	}
