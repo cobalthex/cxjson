@@ -1,3 +1,4 @@
 [5,true,3.0,
-{"test":"taco\u002B",
-"foo":5.0}]
+{"test":"taco",
+"foo":5.0}
+]

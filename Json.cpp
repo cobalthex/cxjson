@@ -4,39 +4,39 @@ using namespace Json;
 
 size_t Value::DefaultStringReserveLength = 32;
 
-Value& Value::operator = (const std::nullptr_t& Value)
+Value& Value::operator = (const Null& Value)
 {
 	Reset();
 	type = Types::Null;
-	new (value)std::nullptr_t(Value);
+	new (value)Null(Value);
 	return *this;
 }
-Value& Value::operator = (bool Value)
+Value& Value::operator = (Boolean Value)
 {
 	Reset();
 	type = Types::Boolean;
-	new (value) bool(Value);
+	new (value) Boolean(Value);
 	return *this;
 }
-Value& Value::operator = (fat Value)
+Value& Value::operator = (Integer Value)
 {
 	Reset();
 	type = Types::Integer;
-	new (value)fat(Value);
+	new (value)Integer(Value);
 	return *this;
 }
-Value& Value::operator = (double Value)
+Value& Value::operator = (Decimal Value)
 {
 	Reset();
-	type = Types::Floating;
-	new (value) double(Value);
+	type = Types::Decimal;
+	new (value) Decimal(Value);
 	return *this;
 }
-Value& Value::operator = (const std::string& Value)
+Value& Value::operator = (const String& Value)
 {
 	Reset();
 	type = Types::String;
-	new (value)std::string(Value);
+	new (value)String(Value);
 	return *this;
 }
 Value& Value::operator = (const Object& Value)
@@ -59,7 +59,7 @@ void Value::Reset()
 	switch (type)
 	{
 	case Types::String:
-		((std::string*)(value))->~basic_string(); break;
+		((String*)(value))->~basic_string(); break;
 	case Types::Object:
 		((Object*)(value))->~Object(); break;
 	case Types::Array:
@@ -68,16 +68,16 @@ void Value::Reset()
 	type = Types::Invalid;
 }
 
-void Value::Read(std::istream& Stream)
+void Value::Read(IStream& Stream)
 {
 	auto type = GuessType(Stream);
-	char ch = 0;
-	std::string s = "";
+	Char ch = 0;
+	String s = "";
 
 	switch (type)
 	{
 	case Types::Null:
-		operator=(std::nullptr_t());
+		operator=(Null());
 		Stream.seekg(4, std::ios::cur);
 		break;
 
@@ -109,7 +109,7 @@ void Value::Read(std::istream& Stream)
 			operator=(std::stoll(s));
 		break;
 
-	case Types::Floating:
+	case Types::Decimal:
 		//negative must come first
 		if (Stream.peek() == '-')
 			s.append('-', 1);
@@ -126,11 +126,11 @@ void Value::Read(std::istream& Stream)
 	case Types::String:
 	{
 		s.reserve(DefaultStringReserveLength); //most strings are short
-		char us[5]; //unicode string (first char is u)
-		char lastUni; //last unicode character (for surrogate pairs)
-		bool isLastUni = false;
+		Char us[5]; //unicode string (first char is u)
+		Char lastUni; //last unicode character (for surrogate pairs)
+		Boolean isLastUni = false;
 
-		char oq = Stream.get();
+		Char oq = Stream.get();
 		ch = Stream.get(); //(supports single quotes)
 		while (ch != oq)
 		{
@@ -196,10 +196,10 @@ void Value::Read(std::istream& Stream)
 			}
 
 			//read key (supports single quotes)
-			std::string key;
+			String key;
 			key.reserve(32);
 
-			char oq = Stream.get(), ch = Stream.get();
+			auto oq = Stream.get(), ch = Stream.get();
 			while (ch != oq)
 			{
 				key += ch;
@@ -257,9 +257,9 @@ void Value::Read(std::istream& Stream)
 
 	}
 }
-void Value::Write(std::ostream& Stream) const
+void Value::Write(OStream& Stream) const
 {
-	std::string out;
+	String out;
 	switch (type)
 	{
 	case Types::Null:
@@ -267,23 +267,23 @@ void Value::Write(std::ostream& Stream) const
 		break;
 
 	case Types::Boolean:
-		out = (*(bool*)value == true ? "true" : "false");
+		out = (*(Boolean*)value == true ? "true" : "false");
 		Stream.write(out.data(), out.length());
 		break;
 
 	case Types::Integer:
-		out = std::to_string(*(fat*)value);
+		out = std::to_string(*(Integer*)value);
 		Stream.write(out.data(), out.length());
 		break;
 
-	case Types::Floating:
-		out = std::to_string(*(double*)value);
+	case Types::Decimal:
+		out = std::to_string(*(Decimal*)value);
 		Stream.write(out.data(), out.length());
 		break;
 
 	case Types::String:
 		Stream.put('"');
-		Stream.write((*(std::string*)value).data(), (*(std::string*)value).length());
+		Stream.write((*(String*)value).data(), (*(String*)value).length());
 		Stream.put('"');
 		break;
 
@@ -294,7 +294,7 @@ void Value::Write(std::ostream& Stream) const
 		auto& prop = *(Object*)value;
 
 		int i = 0, n = prop.size();
-		for (auto& p : prop)
+		for (auto const& p : prop)
 		{
 			i++;
 
@@ -337,21 +337,21 @@ void Value::Write(std::ostream& Stream) const
 }
 
 
-Types Value::GuessType(std::istream& Stream)
+Types Value::GuessType(IStream& Stream)
 {
-	char pk = Stream.peek();
-	//figure out type of number (integer, floating)
+	auto pk = Stream.peek();
+	//figure out type of number (integer, Decimal)
 	if ((pk >= '0' && pk <= '9') || pk == '-')
 	{
 		ptrdiff_t count = 1;
-		char nk = Stream.get(); //skip first (already known from above)
+		auto nk = Stream.get(); //skip first (already known from above)
 		while ((nk = Stream.peek()) >= '0' && nk <= '9')
 			count++, nk = Stream.get();
 
 		Stream.seekg(-count, std::ios::cur); //reset
 
 		if (nk == '.')
-			return Types::Floating;
+			return Types::Decimal;
 		return Types::Integer;
 	}
 
@@ -359,7 +359,7 @@ Types Value::GuessType(std::istream& Stream)
 	{
 	case '{': return Types::Object;
 	case '[': return Types::Array;
-	case '.': return Types::Floating;
+	case '.': return Types::Decimal;
 	case 't':
 	case 'T':
 	case 'f':
@@ -373,16 +373,16 @@ Types Value::GuessType(std::istream& Stream)
 	}
 }
 
-void Value::SkipWhitespace(std::istream& Stream)
+void Value::SkipWhitespace(IStream& Stream)
 {
-	char pk;
+	Char pk;
 	while (!Stream.eof() && ((pk = Stream.peek()) == ' ' || pk == '\t' || pk == '\r' || pk == '\n'))
 		pk = Stream.get();
 }
-std::string Value::EscapeQuotes(std::string String)
+Json::Value::String Value::EscapeQuotes(String String)
 {
 	size_t loc = 0;
-	while ((loc = String.find('"', loc)) != std::string::npos)
+	while ((loc = String.find('"', loc)) != String::npos)
 		String.replace(loc, 1, "\\\""), loc += 2;
 
 	return String;

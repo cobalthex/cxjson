@@ -1,118 +1,143 @@
 #pragma once
 
-#include "Pch.hpp"
+#include <fstream>
+#include <vector>
+#include <map>
+#include <string>
 
 //return the size in bytes of the largest type in the group
 template<typename F, typename... Ts> struct SizeofLargestType { static const size_t size = (sizeof(F) > SizeofLargestType <Ts...>::size ? sizeof(F) : SizeofLargestType <Ts...>::size); };
 template<typename F> struct SizeofLargestType <F> { static const size_t size = sizeof(F); };
 
-//Basic JSON IO. Limited Error handling. Supports all standard JSON types (Including Integers and Floats separately)
+//Basic JSON IO. Limited Error handling. Supports all standard JSON types (Including integers and decimals separately)
 namespace Json
 {
-	//All of the JSON types
-	enum class Types
-	{
-		Invalid,
-		Null,
-		Boolean,
-		Integer,
-		Floating,
-		String,
-		Object,
-		Array
-	};
+    //All of the JSON types
+    enum class Types
+    {
+        Invalid,
+        Null,
+        Boolean,
+        Integer,
+        Decimal,
+        String,
+        Object,
+        Array
+    };
 
-	class Value;
+    class Value;
 
-	typedef long long fat;
-	typedef std::vector<Value> Array;
-	typedef std::map<std::string, Value> Object;
+    //A value representing one of the JSON types. (numbers (split into integers and decimals), null, bool, strings, objects, and arrays)
+    class Value
+    {
+    public:
 
-	//A value representing one of the JSON types. (numbers (split into integers and floats), null, bool, strings, objects, and arrays)
-	class Value
-	{
-	public:
+        using Char      = char;
+        using Null      = std::nullptr_t;
+        using Boolean   = bool;
+        using Decimal   = double;
+        using Integer   = long long;
+        using String    = std::basic_string<Char>;
+        using Array     = std::vector<Value>;
+        using Object    = std::map<String, Value>;
 
-		Value() : type(Types::Invalid) { } 
+        using IStream   = std::basic_istream<Char>;
+        using OStream   = std::basic_ostream<Char>;
+        using IFStream  = std::basic_ifstream<Char>;
+        using OFStream  = std::basic_ofstream<Char>;
 
-		//factory methods
+        Value() : type(Types::Invalid) { }
 
-		template <typename T> static Value Create(const T& Val) { return Value(); }
-		template <> static Value Create<nullptr_t>(const nullptr_t& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<bool>(const bool& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<fat>(const fat& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<double>(const double& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<std::string>(const std::string& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<Object>(const Object& Val) { Value v; v.operator=(Val); return v; }
-		template <> static Value Create<Array>(const Array& Val) { Value v; v.operator=(Val); return v; }
+        //factory methods
 
-		static Value Create(const char* Val) { Value v; v.operator=(std::string(Val)); return v; }
 
-		inline Types Type() const { return type; }
+        static Value Create(const Null& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const Boolean& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const Integer& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const Decimal& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const String& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const Object& Val) { Value v; v.operator=(Val); return v; }
+        static Value Create(const Array& Val) { Value v; v.operator=(Val); return v; }
 
-		//Set operators
+        static Value Create(const Char* Val) { Value v; v.operator=(String(Val)); return v; }
 
-		Value& operator = (const std::nullptr_t& Value);
-		Value& operator = (bool Value);
-		Value& operator = (fat Value);
-		Value& operator = (double Value);
-		Value& operator = (const std::string& Value);
-		Value& operator = (const Object& Value);
-		Value& operator = (const Array& Value);
+        inline Types Type() const { return type; }
 
-		inline Value& operator = (short Value) { return operator=(short(Value)); }
-		inline Value& operator = (int Value) { return operator=(fat(Value)); }
-		inline Value& operator = (unsigned Value) { return operator=(fat(Value)); }
-		inline Value& operator = (float Value) { return operator=(float(Value)); }
-		inline Value& operator = (const char* Value) { return operator=(std::string(Value)); }
+        //Set operators
 
-		//Get operators
+        Value& operator = (const Null& Value);
+        Value& operator = (Boolean Value);
+        Value& operator = (Integer Value);
+        Value& operator = (Decimal Value);
+        Value& operator = (const String& Value);
+        Value& operator = (const Object& Value);
+        Value& operator = (const Array& Value);
 
-		inline operator std::nullptr_t() const { return *(std::nullptr_t*)(value); }
-		inline operator bool() const { return *(bool*)(value); }
-		inline operator fat () const { return *(fat*)(value); }
-		inline operator double() const { return *(double*)(value); }
-		inline operator std::string() const { return *(std::string*)(value); }
-		inline operator Object() const { return *(Object*)(value); }
-		inline operator Array() const { return *(Array*)(value); }
+        inline Value& operator = (short Value) { return operator=(short(Value)); }
+        inline Value& operator = (int Value) { return operator=(Integer(Value)); }
+        inline Value& operator = (unsigned Value) { return operator=(Integer(Value)); }
+        inline Value& operator = (float Value) { return operator=(float(Value)); }
+        inline Value& operator = (const Char* Value) { return operator=(String(Value)); }
 
-		inline operator short() const { return (short)(*(fat*)(value)); }
-		inline operator int() const { return (int)(*(fat*)(value)); }
-		inline operator unsigned() const { return (unsigned)(*(fat*)(value)); }
-		inline operator float() const { return (float)(*(double*)(value)); }
-		inline operator const char*() const { return ((std::string*)(value))->c_str(); }
+        //Get operators
 
-		//Serializers
+        inline operator Null() const { return *(Null*)(value); }
+        inline operator Boolean() const { return *(Boolean*)(value); }
+        inline operator Integer () const { return *(Integer*)(value); }
+        inline operator Decimal() const { return *(Decimal*)(value); }
+        inline operator String() const { return *(String*)(value); }
+        inline operator Object() const { return *(Object*)(value); }
+        inline operator Array() const { return *(Array*)(value); }
 
-		void Read(std::istream& Stream); //Create a value from a stream
-		void Write(std::ostream& Stream) const; //Write a value to a stream
+        inline operator short() const { return (short)(*(Integer*)(value)); }
+        inline operator int() const { return (int)(*(Integer*)(value)); }
+        inline operator unsigned() const { return (unsigned)(*(Integer*)(value)); }
+        inline operator float() const { return (float)(*(Decimal*)(value)); }
+        inline operator const Char*() const { return ((String*)(value))->c_str(); }
 
-		static size_t DefaultStringReserveLength; //the default string reservation length (in chars) - Defaults to 32
+        //Serializers
 
-		//Helper methods
+        void Read(IStream& Stream); //Create a value from a stream
+        void Write(OStream& Stream) const; //Write a value to a stream
 
-		//Load a value automatically from a file
-		static inline Value FromFile(const std::string& FileName)
-		{
-			std::ifstream fin (FileName, std::ios::in);
-			Value v;
-			v.Read(fin);
-			fin.close();
-			return v;
-		}
+        static size_t DefaultStringReserveLength; //the default string reservation length (in chars) - Defaults to 32
 
-	protected:
-		Types type;
-		char value[SizeofLargestType<std::nullptr_t, bool, fat, double, std::string, Object, Array>::size];
+        //Helper methods
 
-		//Delete any old values and reset it to the default
-		void Reset();
+        //Load a value automatically from a file
+        static inline Value FromFile(const String& FileName)
+        {
+            IFStream fin;
+            fin.open(FileName, std::ios::in);
+            Value v;
+            v.Read(fin);
+            fin.close();
+            return v;
+        }
+        inline Boolean WriteToFile(const String& FileName)
+        {
+            OFStream fout (FileName, std::ios::out);
+            if (!fout.is_open())
+                return false;
 
-		static Types GuessType(std::istream& Stream); //Guess the type of object (Only looks based on the first character) - Assumes first character at stream pos is usable
-		static void SkipWhitespace(std::istream& Stream); //Skip any whitespace (Schema defined whitespace)
-		static std::string EscapeQuotes(std::string String);
-	};
+            Write(fout);
+
+            fout.close();
+            return true;
+        }
+
+    protected:
+        Types type;
+        char value[SizeofLargestType<Null, Boolean, Integer, Decimal, String, Object, Array>::size];
+
+        //Delete any old values and reset it to the default
+        void Reset();
+
+        static Types GuessType(IStream& Stream); //Guess the type of object (Only looks based on the first character) - Assumes first character at stream pos is usable
+        static void SkipWhitespace(IStream& Stream); //Skip any whitespace (Schema defined whitespace)
+        static String EscapeQuotes(String String);
+    };
 }
 
-inline std::istream& operator >> (std::istream& Stream, Json::Value& Value) { Value.Read(Stream); return Stream; }
-inline std::ostream& operator << (std::ostream& Stream, const Json::Value& Value) { Value.Write(Stream); return Stream; }
+inline Json::Value::IStream& operator >> (Json::Value::IStream& Stream, Json::Value& Value) { Value.Read(Stream); return Stream; }
+inline Json::Value::OStream& operator << (Json::Value::OStream& Stream, const Json::Value& Value) { Value.Write(Stream); return Stream; }
